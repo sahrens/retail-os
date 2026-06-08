@@ -30,7 +30,10 @@ export default function Landing() {
         <div className="max-w-2xl mx-auto px-6 pb-20 space-y-16">
           {landing.sections.map((section, i) => (
             <section key={i}>
-              <h3 className="text-xl font-medium mb-3" style={{ color: colors.text }}>{section.title}</h3>
+              <h3 className="text-xl font-medium mb-1" style={{ color: colors.text }}>{section.title}</h3>
+              {section.subtitle && (
+                <p className="text-sm italic mb-3" style={{ color: colors.primary }}>{section.subtitle}</p>
+              )}
               <p className="leading-relaxed" style={{ color: colors.muted }}>{section.body}</p>
             </section>
           ))}

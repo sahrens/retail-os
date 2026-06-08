@@ -20,6 +20,7 @@ export interface ShopConfig {
     heroSubtitle?: string;
     sections?: Array<{
       title: string;
+      subtitle?: string;
       body: string;
     }>;
   };
