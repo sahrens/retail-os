@@ -29,14 +29,14 @@ export function NavBar() {
   return (
     <header className="border-b px-4 py-3" style={{ borderColor: `${shopConfig.colors.muted}22` }}>
       <div className="max-w-2xl mx-auto flex items-center justify-between">
-        {/* Left: shop name */}
-        <button
-          onClick={() => setLocation('/admin')}
+        {/* Left: shop name → links to public storefront */}
+        <a
+          href="/"
           className="text-lg font-semibold"
           style={{ color: shopConfig.colors.primary }}
         >
           {shopConfig.name}
-        </button>
+        </a>
 
         {/* Center: nav links */}
         <nav className="flex items-center gap-1">
