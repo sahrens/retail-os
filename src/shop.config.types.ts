@@ -23,6 +23,7 @@ export interface ShopConfig {
       subtitle?: string;
       body: string;
       image?: string;  // Path to section image (relative to public/)
+      gallery?: string[];  // Additional images for the section
     }>;
     heroImage?: string;  // Hero background/banner image
   };
