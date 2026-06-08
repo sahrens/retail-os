@@ -9,7 +9,7 @@ export interface ShopConfig {
   // Branding
   colors: {
     primary: string;    // Main brand color (hex)
-    accent: string;     // Accent/highlight color (hex)
+    accent?: string;    // Accent/highlight color (hex)
     bg: string;         // Background color (hex)
     text: string;       // Primary text color (hex)
     muted: string;      // Muted/secondary text color (hex)
