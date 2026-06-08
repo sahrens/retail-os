@@ -107,6 +107,49 @@ async function sendOtpEmail(email: string, code: string, shopName: string, siteU
   }
 }
 
+async function sendInviteEmail(
+  email: string,
+  role: string,
+  inviterName: string,
+  shopName: string,
+  siteUrl: string,
+  apiKey: string
+): Promise<boolean> {
+  const roleLabel = role === 'admin' ? 'an admin' : 'a team member';
+  try {
+    const res = await fetch('https://api.agentmail.to/v0/inboxes/atlas-nav%40agentmail.to/messages/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: [email],
+        subject: `${inviterName} invited you to ${shopName}`,
+        text: `${shopName}\n\n${inviterName} has invited you as ${roleLabel}.\n\nVisit ${siteUrl}/login and enter your email to log in.`,
+        html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+  <div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
+    <div style="background:#4a6741;padding:20px 24px;">
+      <h1 style="color:white;margin:0;font-size:18px;">${shopName}</h1>
+    </div>
+    <div style="padding:24px;">
+      <p style="color:#333;font-size:15px;line-height:1.5;margin:0 0 8px;"><strong>${inviterName}</strong> has invited you as ${roleLabel}.</p>
+      <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 20px;">Visit the link below and enter your email to log in:</p>
+      <a href="${siteUrl}/login" style="display:inline-block;background:#4a6741;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Join ${shopName}</a>
+    </div>
+    <div style="padding:12px 24px;background:#f9f9f9;border-top:1px solid #e5e5e5;">
+      <p style="color:#aaa;font-size:11px;margin:0;">RetailOS</p>
+    </div>
+  </div>
+</div>`,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // --- Main Worker ---
 
 export default {
@@ -282,7 +325,100 @@ export default {
       return json({ slug, content });
     }
 
-    // ─── ADMIN: INVITE USER ───
+    // ─── MEMBER MANAGEMENT ENDPOINTS ───
+
+    // List all members
+    if (path === '/api/members' && request.method === 'GET') {
+      const user = await getSessionUser(request, env.DB);
+      if (!user || !isAdmin(user.role)) return json({ error: 'Admin access required' }, 403);
+      const { results } = await env.DB.prepare(
+        'SELECT id, email, name, role, status, created_at, last_login FROM users ORDER BY created_at DESC'
+      ).all();
+      return json(results);
+    }
+
+    // Invite new member
+    if (path === '/api/members/invite' && request.method === 'POST') {
+      const user = await getSessionUser(request, env.DB);
+      if (!user || !isAdmin(user.role)) return json({ error: 'Admin access required' }, 403);
+      const { email, role } = await request.json() as { email: string; role?: string };
+      if (!email) return json({ error: 'Email required' }, 400);
+      const normalizedEmail = email.toLowerCase().trim();
+      const validRoles = ['admin', 'member'];
+      const memberRole = validRoles.includes(role || '') ? role! : 'member';
+
+      // Check if user already exists
+      const existing = await env.DB.prepare('SELECT id, status FROM users WHERE email = ?')
+        .bind(normalizedEmail).first<{ id: string; status: string }>();
+      if (existing) {
+        return json({ error: 'User with this email already exists' }, 409);
+      }
+
+      // Create user
+      const id = crypto.randomUUID();
+      await env.DB.prepare(
+        `INSERT INTO users (id, email, role, status) VALUES (?, ?, ?, 'invited')`
+      ).bind(id, normalizedEmail, memberRole).run();
+
+      // Send invite email
+      const shopName = env.SHOP_NAME || 'RetailOS';
+      const inviterName = user.name || user.email;
+      await sendInviteEmail(normalizedEmail, memberRole, inviterName, shopName, url.origin, env.AGENTMAIL_API_KEY);
+
+      return json({ ok: true, id });
+    }
+
+    // Resend invite email
+    if (path === '/api/members/resend-invite' && request.method === 'POST') {
+      const user = await getSessionUser(request, env.DB);
+      if (!user || !isAdmin(user.role)) return json({ error: 'Admin access required' }, 403);
+      const { userId } = await request.json() as { userId: string };
+      if (!userId) return json({ error: 'userId required' }, 400);
+
+      const member = await env.DB.prepare('SELECT email, role, status FROM users WHERE id = ?')
+        .bind(userId).first<{ email: string; role: string; status: string }>();
+      if (!member) return json({ error: 'Member not found' }, 404);
+      if (member.status !== 'invited') return json({ error: 'Member has already joined' }, 400);
+
+      const shopName = env.SHOP_NAME || 'RetailOS';
+      const inviterName = user.name || user.email;
+      const sent = await sendInviteEmail(member.email, member.role, inviterName, shopName, url.origin, env.AGENTMAIL_API_KEY);
+      if (!sent) return json({ error: 'Failed to send email' }, 500);
+      return json({ ok: true });
+    }
+
+    // Update member role
+    if (path.startsWith('/api/members/') && request.method === 'PUT') {
+      const user = await getSessionUser(request, env.DB);
+      if (!user || !isAdmin(user.role)) return json({ error: 'Admin access required' }, 403);
+      const memberId = path.split('/')[3];
+      const { role } = await request.json() as { role: string };
+      const validRoles = ['admin', 'member'];
+      if (!validRoles.includes(role)) return json({ error: 'Invalid role' }, 400);
+
+      // Prevent self-demotion
+      if (memberId === user.id) return json({ error: 'Cannot change your own role' }, 400);
+
+      await env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(role, memberId).run();
+      return json({ ok: true });
+    }
+
+    // Remove member
+    if (path.startsWith('/api/members/') && request.method === 'DELETE') {
+      const user = await getSessionUser(request, env.DB);
+      if (!user || !isAdmin(user.role)) return json({ error: 'Admin access required' }, 403);
+      const memberId = path.split('/')[3];
+
+      // Prevent self-removal
+      if (memberId === user.id) return json({ error: 'Cannot remove yourself' }, 400);
+
+      // Delete sessions, then user
+      await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(memberId).run();
+      await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(memberId).run();
+      return json({ ok: true });
+    }
+
+    // ─── LEGACY INVITE ENDPOINT (backward compat) ───
 
     if (path === '/api/admin/invite' && request.method === 'POST') {
       const user = await getSessionUser(request, env.DB);

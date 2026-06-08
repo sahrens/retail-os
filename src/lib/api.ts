@@ -29,8 +29,23 @@ export const docs = {
   get: (slug: string) => request<{ slug: string; content: string }>(`/api/docs/${slug}`),
 };
 
-export const admin = {
-  invite: (email: string, role?: string) => request<{ ok: boolean; id: string }>('/api/admin/invite', {
+export const members = {
+  list: () => request<any[]>('/api/members'),
+  invite: (email: string, role?: string) => request<{ ok: boolean; id: string }>('/api/members/invite', {
     method: 'POST', body: JSON.stringify({ email, role }),
   }),
+  updateRole: (id: string, role: string) => request<{ ok: boolean }>(`/api/members/${id}`, {
+    method: 'PUT', body: JSON.stringify({ role }),
+  }),
+  remove: (id: string) => request<{ ok: boolean }>(`/api/members/${id}`, {
+    method: 'DELETE',
+  }),
+  resendInvite: (userId: string) => request<{ ok: boolean }>('/api/members/resend-invite', {
+    method: 'POST', body: JSON.stringify({ userId }),
+  }),
+};
+
+// Legacy alias
+export const admin = {
+  invite: (email: string, role?: string) => members.invite(email, role),
 };

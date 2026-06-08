@@ -51,7 +51,7 @@ export default function AdminDocs() {
   const rendered = content ? marked.parse(content, { async: false }) as string : '';
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: shopConfig.colors.bg }}>
+    <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-3xl mx-auto px-4 py-6 pb-16">
         {/* Doc selector */}
         {docList.length > 1 && (
