@@ -1,7 +1,10 @@
 import shopConfig from '@/shop.config';
+import { useStore } from '@/lib/store';
 
 export default function Landing() {
   const { colors, landing, contact, location } = shopConfig;
+  const user = useStore(s => s.user);
+  const loading = useStore(s => s.loading);
 
   return (
     <div className="min-h-screen" style={{ background: colors.bg, color: colors.text }}>
@@ -15,6 +18,15 @@ export default function Landing() {
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        {/* Team link for logged-in users */}
+        {!loading && user && (
+          <a
+            href="/admin"
+            className="absolute top-5 right-5 z-20 px-4 py-2 text-sm font-medium text-white/90 bg-white/15 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/25 transition-all"
+          >
+            Team
+          </a>
+        )}
         <div className="relative z-10 px-6 pb-14 md:pb-20 max-w-3xl mx-auto w-full">
           <h1 className="text-sm font-medium tracking-[0.2em] uppercase text-white/70 mb-3">
             {shopConfig.name}
