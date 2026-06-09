@@ -1,7 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import * as api from '@/lib/api';
 import shopConfig from '@/shop.config';
+
+const ERROR_MESSAGES: Record<string, string> = {
+  link_expired: 'That link has expired or was already used. Enter your email to get a new one.',
+  not_found: 'Account not found. Please check your email or ask for a new invite.',
+};
 
 export function Login() {
   const setUser = useStore(s => s.setUser);
@@ -11,6 +16,16 @@ export function Login() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlError = params.get('error');
+    if (urlError && ERROR_MESSAGES[urlError]) {
+      setError(ERROR_MESSAGES[urlError]);
+      // Clean up URL
+      window.history.replaceState({}, '', '/login');
+    }
+  }, []);
   const [cooldown, setCooldown] = useState(0);
   const codeInputRef = useRef<HTMLInputElement>(null);
 
@@ -85,6 +100,12 @@ export function Login() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-medium mb-4" style={{ color: shopConfig.colors.text }}>Team Login</h2>
 
+          {error && step === 'email' && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">{error}</p>
+            </div>
+          )}
+
           {step === 'email' && (
             <form onSubmit={handleRequestOtp}>
               <label className="block text-sm font-medium text-gray-600 mb-2">Email address</label>
@@ -97,7 +118,6 @@ export function Login() {
                 placeholder="you@example.com"
                 autoFocus
               />
-              {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
               <button
                 type="submit"
                 disabled={loading || !email.trim()}
