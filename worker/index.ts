@@ -43,11 +43,11 @@ function generateToken(): string {
 }
 
 function sessionCookie(token: string, maxAge = 30 * 24 * 3600): string {
-  return `shop_session=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+  return `shop_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
 }
 
 function clearSessionCookie(): string {
-  return 'shop_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0';
+  return 'shop_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
 }
 
 function getSessionToken(request: Request): string | null {
