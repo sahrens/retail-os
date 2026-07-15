@@ -246,13 +246,13 @@ export default {
       const otp = await env.DB.prepare(
         'SELECT id FROM otp_codes WHERE email = ? AND code = ? AND expires_at > datetime(\'now\') AND used = 0'
       ).bind(normalizedEmail, code).first<{ id: number }>();
-      if (!otp) return new Response(null, { status: 302, headers: { Location: '/login?error=link_expired' } });
+      if (!otp) return new Response(null, { status: 302, headers: { Location: `/login?error=link_expired&email=${encodeURIComponent(normalizedEmail)}` } });
 
       await env.DB.prepare('UPDATE otp_codes SET used = 1 WHERE id = ?').bind(otp.id).run();
 
       const user = await env.DB.prepare('SELECT id, name, role, status FROM users WHERE email = ?')
         .bind(normalizedEmail).first<{ id: string; name: string | null; role: string; status: string }>();
-      if (!user) return new Response(null, { status: 302, headers: { Location: '/login?error=not_found' } });
+      if (!user) return new Response(null, { status: 302, headers: { Location: `/login?error=not_found&email=${encodeURIComponent(normalizedEmail)}` } });
 
       if (user.status === 'invited') {
         await env.DB.prepare("UPDATE users SET status = 'active' WHERE id = ?").bind(user.id).run();

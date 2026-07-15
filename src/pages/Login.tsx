@@ -20,9 +20,13 @@ export function Login() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlError = params.get('error');
+    const urlEmail = params.get('email');
+    if (urlEmail) setEmail(decodeURIComponent(urlEmail));
     if (urlError && ERROR_MESSAGES[urlError]) {
       setError(ERROR_MESSAGES[urlError]);
-      // Clean up URL
+    }
+    // Clean up URL
+    if (urlError || urlEmail) {
       window.history.replaceState({}, '', '/login');
     }
   }, []);
